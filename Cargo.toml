@@ -1,0 +1,23 @@
+[package]
+name = "watch"
+version = "0.2.0"
+authors = ["Alice Ryhl <alice@ryhl.io>"]
+edition = "2018"
+license = "MIT"
+readme = "README.md"
+documentation = "https://docs.rs/watch/0.2.0/watch/"
+repository = "https://github.com/Darksonn/watch"
+description = """
+A synchronous message passing channel that only retains the most recent value.
+"""
+categories = ["data-structures", "concurrency"]
+keywords = ["channel", "watch"]
+
+[dependencies]
+parking_lot = { version = "0.11", optional = true }
+
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.playground]
+features = ["parking_lot"]
