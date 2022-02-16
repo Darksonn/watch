@@ -14,7 +14,7 @@ categories = ["data-structures", "concurrency"]
 keywords = ["channel", "watch"]
 
 [dependencies]
-parking_lot = { version = "0.11", optional = true }
+parking_lot = { version = "0.12", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true
