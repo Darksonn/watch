@@ -93,6 +93,19 @@ impl<T> WatchSender<T> {
         drop(value);
     }
 
+    /// Update the message by a closure and notify all receivers currently waiting for a message.
+    pub fn update<F>(&self, f: F)
+    where
+        F: FnOnce(&mut T),
+    {
+        {
+            let mut lock = self.shared.lock.lock();
+            f(&mut lock.value);
+            lock.version = lock.version.wrapping_add(1);
+        }
+        self.shared.on_update.notify_all();
+    }
+
     /// Create a new receiver for the channel.
     ///
     /// Any messages sent before this method was called are considered seen by
