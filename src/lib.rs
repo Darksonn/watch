@@ -3,17 +3,20 @@
 //!
 //! This crate provides a `parking_lot` feature. When enabled, the crate will
 //! use the mutex from the `parking_lot` crate rather than the one from std.
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 #[cfg(not(feature = "parking_lot"))]
 mod sync_std;
 #[cfg(not(feature = "parking_lot"))]
-use sync_std::{Mutex, Condvar};
+use sync_std::{Condvar, Mutex};
 
 #[cfg(feature = "parking_lot")]
 mod sync_parking_lot;
 #[cfg(feature = "parking_lot")]
-use sync_parking_lot::{Mutex, Condvar};
+use sync_parking_lot::{Condvar, Mutex};
 
 /// The sender for the watch channel.
 ///
@@ -61,10 +64,7 @@ struct SharedValue<T> {
 /// The starting value in the channel is not initially considered seen by the receiver.
 pub fn channel<T: Clone>(value: T) -> (WatchSender<T>, WatchReceiver<T>) {
     let shared = Arc::new(Shared {
-        lock: Mutex::new(SharedValue {
-            value,
-            version: 1,
-        }),
+        lock: Mutex::new(SharedValue { value, version: 1 }),
         on_update: Condvar::new(),
     });
     (
@@ -74,7 +74,7 @@ pub fn channel<T: Clone>(value: T) -> (WatchSender<T>, WatchReceiver<T>) {
         WatchReceiver {
             shared,
             last_seen_version: 0,
-        }
+        },
     )
 }
 
@@ -153,6 +153,29 @@ impl<T: Clone> WatchReceiver<T> {
 
         self.last_seen_version = lock.version;
         lock.value.clone()
+    }
+
+    /// This method waits until a new value becomes available and return a clone
+    /// of it, timing out after specified duration.
+    pub fn wait_timeout(&mut self, duration: Duration) -> Option<T> {
+        let mut lock = self.shared.lock.lock();
+
+        let deadline = Instant::now() + duration;
+
+        while lock.version == self.last_seen_version {
+            let timeout = deadline.saturating_duration_since(Instant::now());
+
+            lock = self.shared.on_update.wait_timeout(lock, timeout)?;
+
+            // Note: checking after `on_update.wait_timeout` to call it at least once,
+            // event when `duration` was zero.
+            if timeout.is_zero() && lock.version == self.last_seen_version {
+                return None;
+            }
+        }
+
+        self.last_seen_version = lock.version;
+        Some(lock.value.clone())
     }
 }
 

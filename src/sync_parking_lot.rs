@@ -1,4 +1,5 @@
 use parking_lot::MutexGuard;
+use std::time::Duration;
 
 pub struct Mutex<T> {
     inner: parking_lot::Mutex<T>,
@@ -29,6 +30,18 @@ impl Condvar {
     pub fn wait<'a, T>(&self, mut guard: MutexGuard<'a, T>) -> MutexGuard<'a, T> {
         self.inner.wait(&mut guard);
         guard
+    }
+
+    pub fn wait_timeout<'a, T>(
+        &self,
+        mut guard: MutexGuard<'a, T>,
+        duration: Duration,
+    ) -> Option<MutexGuard<'a, T>> {
+        if self.inner.wait_for(&mut guard, duration).timed_out() {
+            None
+        } else {
+            Some(guard)
+        }
     }
 
     pub fn notify_all(&self) {
