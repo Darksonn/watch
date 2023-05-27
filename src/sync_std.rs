@@ -1,4 +1,4 @@
-use std::sync::MutexGuard;
+use std::{sync::MutexGuard, time::Duration};
 
 pub struct Mutex<T> {
     inner: std::sync::Mutex<T>,
@@ -36,6 +36,16 @@ impl Condvar {
         }
     }
 
+    pub fn wait_timeout<'a, T>(
+        &self,
+        guard: MutexGuard<'a, T>,
+        duration: Duration,
+    ) -> Option<MutexGuard<'a, T>> {
+        match self.inner.wait_timeout(guard, duration) {
+            Ok((guard, _)) => Some(guard),
+            Err(_) => None,
+        }
+    }
     pub fn notify_all(&self) {
         self.inner.notify_all();
     }
